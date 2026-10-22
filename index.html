@@ -317,7 +317,7 @@ function viewTimer(){
   return h+'<div class="chips">'+[["Tabata","20,10,8"],["30 / 30","30,30,10"],["50 / 10","50,10,10"]].map(function(p){return'<button class="chip" data-act="itp" data-p="'+p[1]+'">'+p[0]+'</button>'}).join("")+'</div><div class="row"><div><label for="iw">Praca (s)</label><input id="iw" type="number" inputmode="numeric" value="'+it.w+'"></div><div><label for="ir">Przerwa (s)</label><input id="ir" type="number" inputmode="numeric" value="'+it.r+'"></div><div><label for="in">Rundy</label><input id="in" type="number" inputmode="numeric" value="'+it.n+'"></div></div><button class="big" data-act="its">Start</button><p class="muted" style="font-size:13px">Sygnał dźwiękowy i wibracja na każdej zmianie. Zostaw ekran włączony i kartę otwartą.</p></div>';
 }
 function backup(){
-  return'<h2>Konto, kopia i import</h2><div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p><p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>'+impBox();
+  return'<h2>Konto, kopia i import</h2><div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p><p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>'+ghBox()+impBox();
 }
 function demoBox(){
   if(sets.some(function(s){return s.demo}))return'<div class="card" style="margin-bottom:12px"><div class="muted" style="margin-bottom:10px">Widzisz przykładowe dane, żeby sprawdzić wykresy. Możesz je usunąć, nie ruszając własnych serii.</div><button class="ghost" style="justify-content:center" data-act="undemo">Usuń przykładowe dane</button></div>';
@@ -328,42 +328,51 @@ var cloud=null,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=n
 function setCst(t){cst=t;var e=document.getElementById("cs");if(e)e.innerHTML="<b>"+esc(t)+"</b>"}
 function months(){var by={};sets.forEach(function(s){var k=s.d.slice(0,7);(by[k]=by[k]||[]).push(s)});return by}
 function touch(){try{localStorage.setItem("gt_ts",String(Date.now()))}catch(e){}if(cloud){clearTimeout(pushT);pushT=setTimeout(push,1200)}}
+var gh=ld("gt_gh",null),ghd={repo:"",token:""},ghSha=null,ghBusy=false,ghTry=0;
+function ghUrl(){return"https://api.github.com/repos/"+gh.repo+"/contents/"+(gh.path||"treningi-dane.json")}
+function ghH(raw){return{"Authorization":"Bearer "+gh.token,"Accept":raw?"application/vnd.github.raw+json":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}}
+function b64e(s){return btoa(unescape(encodeURIComponent(s)))}
+function b64d(s){return decodeURIComponent(escape(atob(s.replace(/\s/g,""))))}
+function ghErr(r){return r.status===401?"token jest nieprawidłowy lub wygasł":r.status===403?"brak uprawnień lub limit zapytań GitHuba":r.status===404?"nie znaleziono repozytorium, sprawdź nazwę i uprawnienia tokena":"błąd GitHuba ("+r.status+")"}
+function snapData(){var ts=+ld("gt_ts",0);if(!ts){ts=Date.now();try{localStorage.setItem("gt_ts",String(ts))}catch(e){}}return{v:1,ts:ts,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}}
 function push(){
-  if(!cloud)return;
-  var by=months(),jobs=[],ts=+ld("gt_ts",0);
-  if(!ts){ts=Date.now();try{localStorage.setItem("gt_ts",String(ts))}catch(e){}}
-  Object.keys(by).forEach(function(k){var j=JSON.stringify(by[k]);if(lastJ[k]!==j){lastJ[k]=j;jobs.push(cloud.doc("s"+k).set({a:by[k]}))}});
-  Object.keys(lastJ).forEach(function(k){if(!by[k]){delete lastJ[k];jobs.push(cloud.doc("s"+k).set({a:[]}))}});
-  jobs.push(cloud.doc("meta").set({ts:ts,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs,months:Object.keys(by)}));
-  Promise.all(jobs).then(function(){setCst("Synchronizacja z kontem włączona, dane zapisane")},function(){setCst("Nie udało się zapisać na koncie, dane są w tej przeglądarce")});
+  if(!cloud||!gh||ghBusy)return;ghBusy=true;setCst("GitHub: zapisywanie…");
+  var body={message:"Aktualizacja danych treningowych",content:b64e(JSON.stringify(snapData()))};if(ghSha)body.sha=ghSha;
+  return fetch(ghUrl(),{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},ghH()),body:JSON.stringify(body)}).then(function(r){
+    ghBusy=false;
+    if(r.ok)return r.json().then(function(j){ghSha=j.content.sha;ghTry=0;setCst("GitHub: dane zapisane")});
+    if((r.status===409||r.status===422)&&ghTry<2){ghTry++;ghSha=null;setCst("GitHub: konflikt, sprawdzam wersję z repozytorium…");return ghInit()}
+    setCst("GitHub: "+ghErr(r));
+  }).catch(function(){ghBusy=false;setCst("GitHub: brak połączenia, dane są w telefonie i zapiszą się przy następnej zmianie")});
 }
-function mark(){var by=months();Object.keys(by).forEach(function(k){lastJ[k]=JSON.stringify(by[k])})}
-function initCloud(){
-  var P;try{P=Promise.all([claude.use("db"),claude.use("user")])}catch(e){P=Promise.resolve([null,null])}
-  P.then(function(r){
-    if(!r[0]||!r[1]){setCst("Dane są tylko w tej przeglądarce (konto niedostępne)");return}
-    return r[1].id().then(function(id){
-      if(!id){setCst("Zaloguj się, aby synchronizować dane z kontem");return}
-      cloud=r[0].collection("data/users/"+id);
-      return cloud.doc("meta").get().then(function(m){
-        var lts=+ld("gt_ts",0),d=m.exists?m.data():null;
-        if(d&&(d.ts||0)>lts){
-          return Promise.all((d.months||[]).map(function(k){return cloud.doc("s"+k).get()})).then(function(qs){
-            var all=[],mg2=!lts&&sets.length,dt=d.tpl||[];
-            qs.forEach(function(q){if(q.exists)all=all.concat(q.data().a||[])});
-            if(mg2){var h={},ht={};all.forEach(function(x){h[x.id]=1});dt.forEach(function(x){ht[x.id]=1});sets.forEach(function(x){if(!h[x.id])all.push(x)});tpl.forEach(function(x){if(!ht[x.id])dt.push(x)})}
-            all.sort(function(a,b){return a.id-b.id});
-            sets=all;tpl=dt.map(norm);wk=d.wk||[];cg=d.cg||{};rt=d.rt||{};rs=d.rs||90;
-            try{localStorage.setItem("gt1",JSON.stringify(sets));localStorage.setItem("gt_tpl",JSON.stringify(tpl));localStorage.setItem("gt_wk",JSON.stringify(wk));localStorage.setItem("gt_cg",JSON.stringify(cg));localStorage.setItem("gt_rt",JSON.stringify(rt));localStorage.setItem("gt_rs",JSON.stringify(rs));localStorage.setItem("gt_ts",String(d.ts))}catch(e){}
-            if(mg2)touch();else mark();
-            setCst("Synchronizacja z kontem włączona, wczytano dane z konta");render();
-          });
-        }
-        if(d&&(d.ts||0)===lts){mark();setCst("Synchronizacja z kontem włączona");return}
-        push();
-      });
+function ghApply(d){
+  var lts=+ld("gt_ts",0),rts=d.ts||0;
+  if(rts>lts){
+    var mg2=!lts&&sets.length,all=(d.sets||[]).slice(),dt=(d.tpl||[]).slice();
+    if(mg2){var h={},ht={};all.forEach(function(x){h[x.id]=1});dt.forEach(function(x){ht[x.id]=1});sets.forEach(function(x){if(!h[x.id])all.push(x)});tpl.forEach(function(x){if(!ht[x.id])dt.push(x)})}
+    all.sort(function(a,b){return a.id-b.id});
+    sets=all;tpl=dt.map(norm);wk=d.wk||[];cg=d.cg||{};rt=d.rt||{};rs=d.rs||90;
+    try{localStorage.setItem("gt1",JSON.stringify(sets));localStorage.setItem("gt_tpl",JSON.stringify(tpl));localStorage.setItem("gt_wk",JSON.stringify(wk));localStorage.setItem("gt_cg",JSON.stringify(cg));localStorage.setItem("gt_rt",JSON.stringify(rt));localStorage.setItem("gt_rs",JSON.stringify(rs));localStorage.setItem("gt_ts",String(rts))}catch(e){}
+    if(mg2)touch();
+    setCst("GitHub: wczytano dane z repozytorium");render();
+  }else if(rts<lts){return push()}else setCst("GitHub: dane zsynchronizowane");
+}
+function ghInit(){
+  if(!gh)return Promise.resolve();setCst("GitHub: łączenie…");
+  return fetch(ghUrl(),{headers:ghH()}).then(function(r){
+    if(r.status===404){ghSha=null;return push()}
+    if(!r.ok){setCst("GitHub: "+ghErr(r));return}
+    return r.json().then(function(j){
+      ghSha=j.sha;
+      var p=(j.content&&j.encoding==="base64")?Promise.resolve(b64d(j.content)):fetch(ghUrl(),{headers:ghH(true)}).then(function(x){return x.text()});
+      return p.then(function(t){return ghApply(JSON.parse(t))});
     });
-  }).catch(function(){setCst("Dane są tylko w tej przeglądarce (konto niedostępne)")});
+  }).catch(function(){setCst("GitHub: brak połączenia lub uszkodzony plik danych")});
+}
+function initCloud(){if(gh){cloud=true;ghInit()}else setCst("Synchronizacja z GitHubem jest wyłączona. Dane są tylko w tej przeglądarce.")}
+function ghBox(){
+  if(gh)return'<h2>Synchronizacja z GitHubem</h2><div class="card"><p style="margin-top:0">Repozytorium: <b>'+esc(gh.repo)+'</b></p><p class="muted">Dane zapisują się automatycznie po każdej zmianie, w pliku '+esc(gh.path||"treningi-dane.json")+'.</p><button class="big" data-act="ghs">Synchronizuj teraz</button><button class="ghost" style="justify-content:center" data-act="ghx">Odłącz GitHub</button></div>';
+  return'<h2>Synchronizacja z GitHubem</h2><div class="card"><p class="muted" style="margin-top:0">Podaj prywatne repozytorium na dane i token z uprawnieniem Contents: Read and write tylko do tego repozytorium. Token zostaje w pamięci tego telefonu.</p><label for="ghr">Repozytorium (login/nazwa)</label><input id="ghr" autocomplete="off" autocapitalize="off" placeholder="twojlogin/treningi-dane" value="'+esc(ghd.repo)+'"><label for="ght" style="margin-top:12px">Token</label><input id="ght" type="password" autocomplete="off" placeholder="github_pat_…" value="'+esc(ghd.token)+'"><button class="big" data-act="ghc">Połącz i synchronizuj</button></div>';
 }
 function num(x){return parseFloat(String(x).replace(",","."))}
 function pd(x,f){
@@ -508,7 +517,7 @@ function render(){
   document.getElementById("app").innerHTML=tab==="log"?viewLog():tab==="plan"?viewPlans():tab==="tmr"?viewTimer():tab==="prog"?viewProg():viewHist()+backup();var ap=document.getElementById("app");ap.className=tab!==lt?"in":"";lt=tab;tick();
   document.getElementById("nav").innerHTML=[["log","Trening"],["plan","Plany"],["prog","Postępy"],["hist","Historia"],["tmr","Timer"]].map(function(t){return'<button data-act="tab" data-t="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':"")+'>'+t[1]+'</button>'}).join("");
 }
-document.addEventListener("input",function(e){var id=e.target.id;if(id==="ex"||id==="kg"||id==="reps")f[id]=e.target.value;else if(id==="tn")td.name=e.target.value;else if(id==="tc"){td.cur=e.target.value;document.getElementById("tl").innerHTML=tlist()}else if(e.target.dataset.tf){td.ex[+e.target.dataset.ti][e.target.dataset.tf]=e.target.value}else if(id==="q"){pk.q=e.target.value;document.getElementById("pl").innerHTML=plist()}else if(e.target.dataset.f){var x=act.ex[+e.target.dataset.i];dr[x][+e.target.dataset.r][e.target.dataset.f]=e.target.value;var el2=document.getElementById("e"+e.target.dataset.i);if(el2)el2.innerHTML=emLine(x,dr[x][+e.target.dataset.r])}else if(id==="iw"||id==="ir"||id==="in"){it[id==="iw"?"w":id==="ir"?"r":"n"]=parseInt(e.target.value,10)||0}else if(id==="bc"){ib=e.target.value}else if(id==="iu"){iu=e.target.value;ip=null;render()}else if(id==="idf"){idf=e.target.value;ip=null;render()}else if(id==="sd"){sd=e.target.value}else if(id==="nt"){act.note=e.target.value;sv("gt_act",act)}else if(id==="ck"||id==="cr"){cl[id==="ck"?"kg":"reps"]=e.target.value;document.getElementById("rm").innerHTML=rmOut()}});
+document.addEventListener("input",function(e){var id=e.target.id;if(id==="ex"||id==="kg"||id==="reps")f[id]=e.target.value;else if(id==="tn")td.name=e.target.value;else if(id==="tc"){td.cur=e.target.value;document.getElementById("tl").innerHTML=tlist()}else if(e.target.dataset.tf){td.ex[+e.target.dataset.ti][e.target.dataset.tf]=e.target.value}else if(id==="q"){pk.q=e.target.value;document.getElementById("pl").innerHTML=plist()}else if(e.target.dataset.f){var x=act.ex[+e.target.dataset.i];dr[x][+e.target.dataset.r][e.target.dataset.f]=e.target.value;var el2=document.getElementById("e"+e.target.dataset.i);if(el2)el2.innerHTML=emLine(x,dr[x][+e.target.dataset.r])}else if(id==="iw"||id==="ir"||id==="in"){it[id==="iw"?"w":id==="ir"?"r":"n"]=parseInt(e.target.value,10)||0}else if(id==="ghr"){ghd.repo=e.target.value}else if(id==="ght"){ghd.token=e.target.value}else if(id==="bc"){ib=e.target.value}else if(id==="iu"){iu=e.target.value;ip=null;render()}else if(id==="idf"){idf=e.target.value;ip=null;render()}else if(id==="sd"){sd=e.target.value}else if(id==="nt"){act.note=e.target.value;sv("gt_act",act)}else if(id==="ck"||id==="cr"){cl[id==="ck"?"kg":"reps"]=e.target.value;document.getElementById("rm").innerHTML=rmOut()}});
 document.addEventListener("change",function(e){
   if(e.target.id!=="ex")return;
   var n=e.target.value.trim(),l=sets.filter(function(s){return s.ex===n}).pop();
@@ -568,6 +577,10 @@ else if(a==="ipv"){ip=parseCsv(ib,iu,idf);render()}
   else if(a==="uimp"){if(cf!=="uimp"){cf="uimp";render();return}cf=null;var n0=sets.length;sets=sets.filter(function(s){return!isImp(s)});save();toast("Usunięto "+(n0-sets.length)+" zaimportowanych serii");render()}
   else if(a==="wipe"){if(cf!=="wipe"){cf="wipe";render();return}cf=null;sets=[];wk=[];save();sv("gt_wk",wk);toast("Usunięto wszystkie serie i historię");render()}
   
+else if(a==="ghc"){var rp=ghd.repo.trim().replace(/^https?:\/\/github\.com\//,"").replace(/\.git$/,"").replace(/\/$/,""),tk=ghd.token.trim();if(!/^[\w.-]+\/[\w.-]+$/.test(rp)||!tk){toast("Podaj repozytorium w formacie login/nazwa i token");return}gh={repo:rp,token:tk,path:"treningi-dane.json"};try{localStorage.setItem("gt_gh",JSON.stringify(gh))}catch(e0){}ghd={repo:"",token:""};cloud=true;ghTry=0;render();ghInit()}
+  else if(a==="ghs"){ghTry=0;ghInit()}
+  else if(a==="ghx"){gh=null;cloud=null;ghSha=null;try{localStorage.removeItem("gt_gh")}catch(e0){}setCst("Synchronizacja z GitHubem wyłączona");render()}
+  
 else if(a==="tcancel"){td=tnew();render()}
   else if(a==="ted"){var t2=tpl.filter(function(x){return String(x.id)===b.dataset.t})[0];td={id:t2.id,name:t2.name,ex:JSON.parse(JSON.stringify(t2.ex)),cur:"",m:"Wszystkie"};render();window.scrollTo(0,0)}
   else if(a==="tdup"){var t3=tpl.filter(function(x){return String(x.id)===b.dataset.t})[0];tpl.push({id:Date.now(),name:t3.name+" (kopia)",ex:JSON.parse(JSON.stringify(t3.ex))});sv("gt_tpl",tpl);toast("Zduplikowano szablon");render()}
@@ -595,7 +608,7 @@ else if(a==="tdel"){tpl=tpl.filter(function(x){return String(x.id)!==b.dataset.t
   else if(a==="pkm"){pk.m=b.dataset.m;render()}
   else if(a==="rs"){var o=[60,90,120,180];rs=o[(o.indexOf(rs)+1)%4];sv("gt_rs",rs);render()}
 });
-render();setInterval(tick,1000);initCloud();
+render();setInterval(tick,1000);initCloud();document.addEventListener("visibilitychange",function(){if(!document.hidden&&gh&&!act&&!ghBusy)ghInit()});
 document.addEventListener("change",function(e){if(e.target.id!=="bf"||!e.target.files[0])return;var r=new FileReader();r.onload=function(){ib=r.result;ip=null;render();toast("Plik wczytany. Naciśnij Sprawdź dane")};r.readAsText(e.target.files[0])});
 </script>
 <script>if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}</script>
