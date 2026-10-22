@@ -1,0 +1,16 @@
+{
+  "name": "Dziennik treningów",
+  "short_name": "Treningi",
+  "description": "Dziennik treningów siłowych: serie, RIR, 1RM, szablony i wykresy postępów.",
+  "lang": "pl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D1016",
+  "theme_color": "#0D1016",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

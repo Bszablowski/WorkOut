@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dziennik treningów</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0D1016">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Treningi">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#ECEEF2;--card:#fff;--ink:#141821;--mut:#646C7C;--line:#DADEE6;--acc:#27807A;--accfg:#fff;--pr:#B4457F;--glow:rgba(39,128,122,.12);--glow2:rgba(106,88,166,.10);--vio:#6A58A6;--ha:#2F8F88;--hb:#6A58A6;--herofg:#fff;--tg:none;--gf:none;
@@ -591,5 +598,6 @@ else if(a==="tdel"){tpl=tpl.filter(function(x){return String(x.id)!==b.dataset.t
 render();setInterval(tick,1000);initCloud();
 document.addEventListener("change",function(e){if(e.target.id!=="bf"||!e.target.files[0])return;var r=new FileReader();r.onload=function(){ib=r.result;ip=null;render();toast("Plik wczytany. Naciśnij Sprawdź dane")};r.readAsText(e.target.files[0])});
 </script>
+<script>if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}</script>
 </body>
 </html>
