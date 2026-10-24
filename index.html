@@ -274,7 +274,7 @@ function plist(){
   if(q&&all.map(function(e){return e.toLowerCase()}).indexOf(q)<0)h+='<button class="big" data-act="adc">Dodaj „'+esc(pk.q.trim())+'”'+(pk.m!=="Wszystkie"?" ("+pk.m+")":"")+'</button>';
   return h||'<div class="empty">Brak wyników.</div>';
 }
-function wkNotes(d){return wk.filter(function(w){return w.d===d}).map(function(w){return'<div class="muted" style="margin-bottom:8px"><b>'+esc(w.name)+'</b>'+(w.min?', '+w.min+' min':'')+(w.bw?', waga ciała '+w.bw+' kg':'')+(w.note?': '+esc(w.note):'')+'</div>'}).join("")}
+function wkNotes(ws){return ws.map(function(w){return'<div class="muted" style="margin-bottom:8px"><b>'+esc(w.name)+'</b>'+(w.min?', '+w.min+' min':'')+(w.bw?', waga ciała '+w.bw+' kg':'')+(w.note?': '+esc(w.note):'')+'</div>'}).join("")}
 function rmOut(){
   var k=parseFloat(String(cl.kg).replace(",",".")),r=parseInt(cl.reps,10);
   if(isNaN(k)||isNaN(r)||k<=0||r<1)return'<p class="muted">Wpisz ciężar i powtórzenia, żeby policzyć maksimum.</p>';
@@ -686,8 +686,12 @@ function bwBox(){
   h+='<div class="stats"><div class="stat"><span>Ostatnio ('+fmtD(last.d)+')</span><b class="num">'+last.v+' kg</b></div><div class="stat"><span>Zmiana od '+fmtD(ss[0].d)+'</span><b class="num">'+(df>0?"+":"")+df+' kg</b></div></div>';
   return h+(ss.length>1?'<div class="card">'+chart(ss,"Wykres wagi ciała")+'</div>':'<div class="empty">Wykres pojawi się po drugim pomiarze.</div>');
 }
-function editDay(d,arr){
-  var h='',w=wk.filter(function(x){return x.d===d})[0];
+// klucz treningu serii: start treningu; starsze serie bez znacznika przypisuje do treningu z podsumowania z tego dnia, a gdy go nie ma, grupuje po dniu
+function wkey(s){if(s.w)return String(s.w);var st=0;wk.forEach(function(w){if(w.st&&w.d===s.d&&w.st<=s.id&&w.st>st)st=w.st});return st?String(st):s.d}
+function wkOf(k,d){return wk.filter(function(w){return k===d?w.d===d&&!w.st:String(w.st)===k})}
+function grp(k){return sets.filter(function(x){return wkey(x)===k})}
+function editDay(k,arr){
+  var h='',w=wkOf(k,arr[0].d)[0];
   if(w)h+='<div style="margin-bottom:10px"><input data-wf="name" value="'+esc(w.name||"")+'" placeholder="Nazwa" style="margin-bottom:6px"><div style="display:flex;gap:6px"><input data-wf="min" type="number" inputmode="numeric" value="'+(w.min||"")+'" placeholder="min" style="width:90px"><input data-wf="bw" type="number" inputmode="decimal" step="0.1" value="'+(w.bw||"")+'" placeholder="waga" style="width:90px"><input data-wf="note" value="'+esc(w.note||"")+'" placeholder="Notatka"></div></div>';
   var g={},order=[];arr.forEach(function(x){if(!g[x.ex]){g[x.ex]=[];order.push(x.ex)}g[x.ex].push(x)});
   var ty=[["","Norm."],["W","Rozgrz."],["D","Drop"],["F","Upadek"]];
@@ -700,16 +704,17 @@ function editDay(d,arr){
 }
 function viewHist(){
   if(!sets.length)return'<h1>Historia</h1>'+cal({})+'<div class="empty">Historia jest pusta. Twoje treningi pojawią się tu po dodaniu pierwszej serii.</div>';
-  var days={};sets.forEach(function(s){(days[s.d]=days[s.d]||[]).push(s)});
+  var days={},gs={};sets.forEach(function(s){(days[s.d]=days[s.d]||[]).push(s);var k=wkey(s);(gs[k]=gs[k]||{k:k,d:s.d,a:[]}).a.push(s)});
+  var gl=Object.keys(gs).map(function(k){return gs[k]}).sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:(+b.k||0)-(+a.k||0)});
   var h='<h1>Historia</h1>'+demoDel()+cal(days)+'<h2>'+(cd?"Wybrany dzień":"Ostatnie treningi")+'</h2>';
-  Object.keys(days).sort().reverse().filter(function(d,i){return cd?d===cd:i<hl}).forEach(function(d){
-    h+='<div class="card" style="margin-bottom:10px"><div class="dh"><b>'+fmtD(d)+'</b><span>'+kgs(tonOf(days[d]))+'</span></div>';
-    if(he===d){h+=editDay(d,days[d])+'</div>';return}
-    h+=wkNotes(d);
-    var g={},order=[];days[d].forEach(function(s){if(!g[s.ex]){g[s.ex]=[];order.push(s.ex)}g[s.ex].push(s)});
+  gl.filter(function(x,i){return cd?x.d===cd:i<hl}).forEach(function(x){var d=x.d;
+    h+='<div class="card" style="margin-bottom:10px"><div class="dh"><b>'+fmtD(d)+'</b><span>'+kgs(tonOf(x.a))+'</span></div>';
+    if(he===x.k){h+=editDay(x.k,x.a)+'</div>';return}
+    h+=wkNotes(wkOf(x.k,d));
+    var g={},order=[];x.a.forEach(function(s){if(!g[s.ex]){g[s.ex]=[];order.push(s.ex)}g[s.ex].push(s)});
     order.forEach(function(e){h+='<div class="exname">'+esc(e)+'</div><div class="muted">'+g[e].map(function(s){return s.kg+"×"+s.reps}).join(" · ")+'</div>'});
-    h+='<button class="sm" style="margin-top:10px" data-act="hed" data-d="'+d+'">✎ Edytuj</button></div>'});
-  return h+(!cd&&Object.keys(days).length>hl?'<button class="ghost" style="justify-content:center" data-act="more">Pokaż starsze treningi</button>':'');
+    h+='<button class="sm" style="margin-top:10px" data-act="hed" data-d="'+x.k+'">✎ Edytuj</button></div>'});
+  return h+(!cd&&gl.length>hl?'<button class="ghost" style="justify-content:center" data-act="more">Pokaż starsze treningi</button>':'');
 }
 function render(){
   document.getElementById("app").innerHTML=tab==="log"?viewLog():tab==="plan"?viewPlans():tab==="tmr"?viewTimer():tab==="prog"?viewProg():viewHist();var ap=document.getElementById("app");ap.className=tab!==lt?"in":"";lt=tab;tick();
@@ -725,12 +730,12 @@ document.addEventListener("input",function(e){
     else if(fl==="rir"){var q=parseInt(v,10);x.rir=isFinite(q)?q:null}
     else if(fl==="t")x.t=v;
     save()}
-  else if(t.dataset.wf){var w=wk.filter(function(y){return y.d===he})[0];if(w){if(t.dataset.wf==="bw"){var bv=parseFloat(String(t.value).replace(",","."));if(bv>0)w.bw=bv;else delete w.bw}else w[t.dataset.wf]=t.dataset.wf==="min"?(parseInt(t.value,10)||0):t.value;sv("gt_wk",wk)}}
+  else if(t.dataset.wf){var hg=grp(he),w=hg.length?wkOf(he,hg[0].d)[0]:null;if(w){if(t.dataset.wf==="bw"){var bv=parseFloat(String(t.value).replace(",","."));if(bv>0)w.bw=bv;else delete w.bw}else w[t.dataset.wf]=t.dataset.wf==="min"?(parseInt(t.value,10)||0):t.value;sv("gt_wk",wk)}}
 });
 document.addEventListener("change",function(e){
   var t=e.target;
   if(t.id==="tls"){tls=t.value;render();return}
-  if(t.dataset&&t.dataset.hx!==undefined){var nn=t.value.trim();if(nn&&nn!==t.dataset.hx){sets.forEach(function(x){if(x.d===he&&x.ex===t.dataset.hx)x.ex=nn});save();render()}return}
+  if(t.dataset&&t.dataset.hx!==undefined){var nn=t.value.trim();if(nn&&nn!==t.dataset.hx){grp(he).forEach(function(x){if(x.ex===t.dataset.hx)x.ex=nn});save();render()}return}
   if(e.target.id!=="ex")return;
   var n=e.target.value.trim(),l=sets.filter(function(s){return s.ex===n}).pop();
   f.ex=n;if(l){f.kg=String(l.kg);f.reps=String(l.reps)}render();
@@ -770,8 +775,8 @@ document.addEventListener("click",function(e){
   
 else if(a==="hed"){he=b.dataset.d;hc=null;render()}
   else if(a==="hdone"){he=null;hc=null;save();sv("gt_wk",wk);render();toast("Zapisano zmiany")}
-  else if(a==="hdel"){if(hc!==b.dataset.id){hc=b.dataset.id}else{sets=sets.filter(function(x){return String(x.id)!==b.dataset.id});hc=null;save();if(!sets.some(function(x){return x.d===he}))he=null}render()}
-  else if(a==="hadd"){var ls=sets.filter(function(x){return x.d===he&&x.ex===b.dataset.ex}).pop(),nid=Math.max.apply(null,sets.filter(function(x){return x.d===he}).map(function(x){return x.id}))+1;while(sets.some(function(x){return x.id===nid}))nid++;var ns={id:nid,d:he,ex:b.dataset.ex,kg:ls?ls.kg:0,reps:ls?ls.reps:0,rir:ls?ls.rir:null,t:""};if(ls&&ls.imp)ns.imp=1;sets.push(ns);save();render()}
+  else if(a==="hdel"){if(hc!==b.dataset.id){hc=b.dataset.id}else{sets=sets.filter(function(x){return String(x.id)!==b.dataset.id});hc=null;save();if(!grp(he).length)he=null}render()}
+  else if(a==="hadd"){var hg=grp(he),ls=hg.filter(function(x){return x.ex===b.dataset.ex}).pop(),nid=Math.max.apply(null,hg.map(function(x){return x.id}))+1;while(sets.some(function(x){return x.id===nid}))nid++;var ns={id:nid,d:hg[0].d,ex:b.dataset.ex,kg:ls?ls.kg:0,reps:ls?ls.reps:0,rir:ls?ls.rir:null,t:""};if(ls&&ls.imp)ns.imp=1;if(/^\d+$/.test(he))ns.w=+he;sets.push(ns);save();render()}
   else if(a==="more"){hl+=10;render()}
   else if(a==="demo"){
     var nn=0,ids=Date.now();
@@ -816,7 +821,7 @@ else if(a==="tdel"){tpl=tpl.filter(function(x){return String(x.id)!==b.dataset.t
     var i=+b.dataset.i,j=+b.dataset.r,ex=act.ex[i],d=dr[ex][j],kg=parseFloat(String(d.kg).replace(",",".")),reps=parseInt(d.reps,10);
     if(isNaN(kg)||kg<0||isNaN(reps)||reps<1){toast("Podaj ciężar i powtórzenia");return}
     var prev=sets.filter(function(s){return s.ex===ex}),best=Math.max.apply(0,prev.map(function(s){return er(s)}));
-    var ns={id:Date.now(),d:act.date||ymd(),ex:ex,kg:kg,reps:reps,rir:(d.rir===""||d.rir==null)?null:+d.rir,t:d.t||""};sets.push(ns);save();
+    var ns={id:Date.now(),w:act.start,d:act.date||ymd(),ex:ex,kg:kg,reps:reps,rir:(d.rir===""||d.rir==null)?null:+d.rir,t:d.t||""};sets.push(ns);save();
     dr[ex].splice(j,1);act.x[ex]=(act.x[ex]||0)-1;sv("gt_act",act);
     var nx=act.ex[i+1],sup=nx&&act.ss[nx];if(!sup)rest=Date.now()+(rt[ex]||rs)*1000;
     render();toast(prev.length&&er(ns)>best?"Nowy rekord! "+kg+" kg × "+reps:sup?"Superseria, teraz: "+nx:"Seria zapisana");
