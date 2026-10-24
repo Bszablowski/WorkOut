@@ -358,10 +358,15 @@ function drawInt(){
   var el=document.getElementById("itv");
   if(el)el.innerHTML='<div class="muted">Runda '+(it.rd+1)+' z '+it.n+'</div><b class="num" style="font-size:96px;line-height:1;display:block;color:'+(it.ph==="work"?"var(--acc)":"var(--pr)")+'">'+left+'</b><div style="font-size:22px;font-weight:600;margin-bottom:8px">'+(it.ph==="work"?"Praca":"Przerwa")+'</div>';
 }
+// rzadko używane narzędzia, wybierane z listy na dole Akcesoriów
+function tools(){
+  var o=[["acc","Konto, kopia i import"],["csv","Import treningów z CSV"],["fix","Naprawa danych"]];
+  return'<h2>Narzędzia</h2><select id="tls" aria-label="Narzędzia"><option value="">Wybierz narzędzie…</option>'+o.map(function(x){return'<option value="'+x[0]+'"'+(tls===x[0]?" selected":"")+'>'+x[1]+'</option>'}).join("")+'</select>'+(tls==="acc"?backup():tls==="csv"?impBox():tls==="fix"?fixBox():"");
+}
 function viewTimer(){
   var h='<h1>Akcesoria</h1><h2>Timer interwałowy</h2><div class="card">';
   if(it.on)return h+'<div id="itv" style="text-align:center"></div><button class="big" data-act="itx">Zatrzymaj</button></div>';
-  return h+'<div class="chips">'+[["Tabata","20,10,8"],["30 / 30","30,30,10"],["50 / 10","50,10,10"]].map(function(p){return'<button class="chip" data-act="itp" data-p="'+p[1]+'">'+p[0]+'</button>'}).join("")+'</div><div class="row"><div><label for="iw">Praca (s)</label><input id="iw" type="number" inputmode="numeric" value="'+it.w+'"></div><div><label for="ir">Przerwa (s)</label><input id="ir" type="number" inputmode="numeric" value="'+it.r+'"></div><div><label for="in">Rundy</label><input id="in" type="number" inputmode="numeric" value="'+it.n+'"></div></div><button class="big" data-act="its">Start</button><p class="muted" style="font-size:13px">Sygnał dźwiękowy i wibracja na każdej zmianie. Zostaw ekran włączony i kartę otwartą.</p></div>'+calc();
+  return h+'<div class="chips">'+[["Tabata","20,10,8"],["30 / 30","30,30,10"],["50 / 10","50,10,10"]].map(function(p){return'<button class="chip" data-act="itp" data-p="'+p[1]+'">'+p[0]+'</button>'}).join("")+'</div><div class="row"><div><label for="iw">Praca (s)</label><input id="iw" type="number" inputmode="numeric" value="'+it.w+'"></div><div><label for="ir">Przerwa (s)</label><input id="ir" type="number" inputmode="numeric" value="'+it.r+'"></div><div><label for="in">Rundy</label><input id="in" type="number" inputmode="numeric" value="'+it.n+'"></div></div><button class="big" data-act="its">Start</button><p class="muted" style="font-size:13px">Sygnał dźwiękowy i wibracja na każdej zmianie. Zostaw ekran włączony i kartę otwartą.</p></div>'+calc()+tools();
 }
 // konta na serwerze w chmurze (Cloudflare); serwer z Dockera ich nie wymaga
 function lgBox(){if(!auth)return'';var r=lgm;
@@ -369,14 +374,14 @@ function lgBox(){if(!auth)return'';var r=lgm;
 // usuwa dane z tego urządzenia (po wylogowaniu albo gdy loguje się inna osoba) i wczytuje aplikację od nowa
 function wipe(){try{["gt1","gt_tpl","gt_wk","gt_cg","gt_rt","gt_rs","gt_ts","gt_act","gt_owner"].forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.reload()}
 function backup(){
-  return'<h2>Konto, kopia i import</h2>'+lgBox()+'<div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p>'+(acct&&me?'<p class="muted">Zalogowano jako <b>'+esc(me)+'</b> <button class="sm" data-act="lgo">Wyloguj</button></p>':'')+'<p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>'+impBox();
+  return'<h2>Konto, kopia i import</h2>'+lgBox()+'<div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p>'+(acct&&me?'<p class="muted">Zalogowano jako <b>'+esc(me)+'</b> <button class="sm" data-act="lgo">Wyloguj</button></p>':'')+'<p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>';
 }
 function demoBox(){
   if(sets.some(function(s){return s.demo}))return'<div class="card" style="margin-bottom:12px"><div class="muted" style="margin-bottom:10px">Widzisz przykładowe dane, żeby sprawdzić wykresy. Możesz je usunąć, nie ruszając własnych serii.</div><button class="ghost" style="justify-content:center" data-act="undemo">Usuń przykładowe dane</button></div>';
   if(!sets.length)return'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">Wykresy pojawią się po zapisaniu serii w zakładce Trening. Jeden trening to jeden punkt, a linia rysuje się od drugiego treningu.</p><p class="muted">Chcesz zobaczyć, jak to wygląda? Wczytaj dane przykładowe, które usuniesz jednym przyciskiem.</p><button class="big" data-act="demo">Wczytaj dane przykładowe</button></div>';
   return"";
 }
-var cloud=null,auth=false,me="",acct=false,lgm=0,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=null,iu="auto",idf="dmy",inm="pl",cf=null;
+var tls="",cloud=null,auth=false,me="",acct=false,lgm=0,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=null,iu="auto",idf="dmy",inm="pl",cf=null;
 function badge(t){var e=document.getElementById("svb");if(!e)return;var p=/zapisywanie|łączenie|konflikt|sprawdzam/i.test(t),k=!p&&/zapisane|wczytano|zsynchronizowane|włączona/i.test(t);e.className=p?"p":k?"k":"w";e.textContent=p?"Zapisywanie…":k?"Zapisano w chmurze":"Tylko w telefonie"}
 function setCst(t){cst=t;badge(t);var e=document.getElementById("cs");if(e)e.innerHTML="<b>"+esc(t)+"</b>"}
 function months(){var by={};sets.forEach(function(s){var k=s.d.slice(0,7);(by[k]=by[k]||[]).push(s)});return by}
@@ -584,7 +589,10 @@ function ipBox(){
 }
 function impBox(){
   var o=function(v,l,c){return'<option value="'+v+'"'+(c===v?" selected":"")+'>'+l+'</option>'};
-  return'<h2>Import treningów z CSV</h2><div class="card"><p class="muted" style="margin-top:0">Wczytaj plik CSV albo wklej tekst, a potem naciśnij „Sprawdź dane”. Zobaczysz podgląd z podsumowaniem, zanim cokolwiek trafi do aplikacji. Potrzebne kolumny: data, ćwiczenie, ciężar, powtórzenia (opcjonalnie RIR).</p><input id="bf" type="file" accept=".csv,.txt,text/csv,text/plain"><label for="bc" style="margin-top:12px">Albo wklej dane</label><textarea id="bc" rows="4" placeholder="data;ćwiczenie;kg;powtórzenia;RIR&#10;2026-10-01;Przysiad ze sztangą;100;5;2">'+esc(ib)+'</textarea><div class="row"><div><label for="iu">Jednostka ciężaru</label><select id="iu">'+o("auto","Wykryj",iu)+o("kg","kg",iu)+o("lb","funty (lb)",iu)+'</select></div><div><label for="idf">Format daty</label><select id="idf">'+o("dmy","DD.MM.RRRR",idf)+o("mdy","MM/DD/RRRR",idf)+'</select></div></div><div class="row"><div><label for="inm">Nazwy ćwiczeń</label><select id="inm">'+o("pl","Polskie (przetłumaczone)",inm)+o("orig","Oryginalne",inm)+'</select></div></div><button class="big" data-act="ipv">Sprawdź dane</button>'+ipBox()+'</div><h2>Naprawa danych</h2><div class="card"><p class="muted" style="margin-top:0">Jeśli import wprowadził złe wartości, usuń zaimportowane serie i spróbuj ponownie z właściwą jednostką lub formatem daty. Treningi zapisane w aplikacji zostają.</p><button class="ghost" style="justify-content:center" data-act="uimp">'+(cf==="uimp"?"Na pewno? Dotknij ponownie":"Usuń zaimportowane serie")+'</button><button class="ghost" style="justify-content:center" data-act="wipe">'+(cf==="wipe"?"Na pewno? Dotknij ponownie":"Usuń wszystkie serie i historię")+'</button></div>';
+  return'<h2>Import treningów z CSV</h2><div class="card"><p class="muted" style="margin-top:0">Wczytaj plik CSV albo wklej tekst, a potem naciśnij „Sprawdź dane”. Zobaczysz podgląd z podsumowaniem, zanim cokolwiek trafi do aplikacji. Potrzebne kolumny: data, ćwiczenie, ciężar, powtórzenia (opcjonalnie RIR).</p><input id="bf" type="file" accept=".csv,.txt,text/csv,text/plain"><label for="bc" style="margin-top:12px">Albo wklej dane</label><textarea id="bc" rows="4" placeholder="data;ćwiczenie;kg;powtórzenia;RIR&#10;2026-10-01;Przysiad ze sztangą;100;5;2">'+esc(ib)+'</textarea><div class="row"><div><label for="iu">Jednostka ciężaru</label><select id="iu">'+o("auto","Wykryj",iu)+o("kg","kg",iu)+o("lb","funty (lb)",iu)+'</select></div><div><label for="idf">Format daty</label><select id="idf">'+o("dmy","DD.MM.RRRR",idf)+o("mdy","MM/DD/RRRR",idf)+'</select></div></div><div class="row"><div><label for="inm">Nazwy ćwiczeń</label><select id="inm">'+o("pl","Polskie (przetłumaczone)",inm)+o("orig","Oryginalne",inm)+'</select></div></div><button class="big" data-act="ipv">Sprawdź dane</button>'+ipBox()+'</div>';
+}
+function fixBox(){
+  return'<h2>Naprawa danych</h2><div class="card"><p class="muted" style="margin-top:0">Jeśli import wprowadził złe wartości, usuń zaimportowane serie i spróbuj ponownie z właściwą jednostką lub formatem daty. Treningi zapisane w aplikacji zostają.</p><button class="ghost" style="justify-content:center" data-act="uimp">'+(cf==="uimp"?"Na pewno? Dotknij ponownie":"Usuń zaimportowane serie")+'</button><button class="ghost" style="justify-content:center" data-act="wipe">'+(cf==="wipe"?"Na pewno? Dotknij ponownie":"Usuń wszystkie serie i historię")+'</button></div>';
 }
 function demoDel(){return sets.some(function(x){return x.demo})?demoBox():""}
 function addEx(e){if(!e)return;if(act.ex.indexOf(e)<0){act.ex.push(e);sv("gt_act",act)}pk.open=false;pk.q="";render()}
@@ -704,7 +712,7 @@ function viewHist(){
   return h+(!cd&&Object.keys(days).length>hl?'<button class="ghost" style="justify-content:center" data-act="more">Pokaż starsze treningi</button>':'');
 }
 function render(){
-  document.getElementById("app").innerHTML=tab==="log"?viewLog():tab==="plan"?viewPlans():tab==="tmr"?viewTimer():tab==="prog"?viewProg():viewHist()+backup();var ap=document.getElementById("app");ap.className=tab!==lt?"in":"";lt=tab;tick();
+  document.getElementById("app").innerHTML=tab==="log"?viewLog():tab==="plan"?viewPlans():tab==="tmr"?viewTimer():tab==="prog"?viewProg():viewHist();var ap=document.getElementById("app");ap.className=tab!==lt?"in":"";lt=tab;tick();
   document.getElementById("nav").innerHTML=[["log","Trening"],["plan","Plany"],["prog","Postępy"],["hist","Historia"],["tmr","Akcesoria"]].map(function(t){return'<button data-act="tab" data-t="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':"")+'>'+t[1]+'</button>'}).join("");
 }
 document.addEventListener("focusin",function(e){if(e.target.id!=="tc")return;td.open=true;var w=document.getElementById("tw"),l=document.getElementById("tl");if(w)w.style.display="block";if(l)l.innerHTML=tlist()});
@@ -721,6 +729,7 @@ document.addEventListener("input",function(e){
 });
 document.addEventListener("change",function(e){
   var t=e.target;
+  if(t.id==="tls"){tls=t.value;render();return}
   if(t.dataset&&t.dataset.hx!==undefined){var nn=t.value.trim();if(nn&&nn!==t.dataset.hx){sets.forEach(function(x){if(x.d===he&&x.ex===t.dataset.hx)x.ex=nn});save();render()}return}
   if(e.target.id!=="ex")return;
   var n=e.target.value.trim(),l=sets.filter(function(s){return s.ex===n}).pop();
@@ -785,7 +794,7 @@ else if(a==="ipv"){ip=parseCsv(ib,iu,idf);render()}
   else if(a==="uimp"){if(cf!=="uimp"){cf="uimp";render();return}cf=null;var n0=sets.length;sets=sets.filter(function(s){return!isImp(s)});save();toast("Usunięto "+(n0-sets.length)+" zaimportowanych serii");render()}
   else if(a==="wipe"){if(cf!=="wipe"){cf="wipe";render();return}cf=null;sets=[];wk=[];save();sv("gt_wk",wk);toast("Usunięto wszystkie serie i historię");render()}
   
-else if(a==="svi"){if(auth){tab="hist";render();var lp=document.getElementById("lpw");if(lp){lp.scrollIntoView({block:"center"});lp.focus()}}else toast(cst)}
+else if(a==="svi"){if(auth){tab="tmr";tls="acc";render();var lp=document.getElementById("lpw");if(lp){lp.scrollIntoView({block:"center"});lp.focus()}}else toast(cst)}
   else if(a==="lgm"){lgm=lgm?0:1;render()}
   else if(a==="lgi"){var lc=document.getElementById("lcd"),bd={user:document.getElementById("lus").value,password:document.getElementById("lpw").value};if(lc)bd.code=lc.value;
     fetch(lc?"api/register":"api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bd)}).then(function(r){if(!r.ok)throw r.status;auth=false;lgm=0;toast(lc?"Konto założone":"Zalogowano");render();initCloud()})
