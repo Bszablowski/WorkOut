@@ -17,8 +17,13 @@ CREATE TABLE IF NOT EXISTS docs_history (
 );
 CREATE INDEX IF NOT EXISTS docs_history_doc ON docs_history (user_id, doc_id, replaced_at DESC);
 
-CREATE TRIGGER IF NOT EXISTS docs_keep_old BEFORE UPDATE ON docs
-FOR EACH ROW WHEN OLD.data IS NOT NEW.data
+-- najwyżej jedna kopia na godzinę dla dokumentu, żeby historia nie zajmowała dziesiątek MB
+DROP TRIGGER IF EXISTS docs_keep_old;
+CREATE TRIGGER docs_keep_old BEFORE UPDATE ON docs
+FOR EACH ROW WHEN OLD.data IS NOT NEW.data AND NOT EXISTS (
+  SELECT 1 FROM docs_history h
+  WHERE h.user_id = OLD.user_id AND h.doc_id = OLD.doc_id AND h.replaced_at > datetime('now', '-1 hour')
+)
 BEGIN
   INSERT INTO docs_history (user_id, doc_id, data) VALUES (OLD.user_id, OLD.doc_id, OLD.data);
 END;
