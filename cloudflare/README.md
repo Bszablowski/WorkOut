@@ -14,7 +14,9 @@ Wszystkie polecenia uruchamiasz w katalogu `cloudflare/`.
 4. `npx wrangler d1 create treningi` i wpisz zwrócone `database_id` do `wrangler.jsonc`.
 5. `npx wrangler d1 execute treningi --remote --file schema.sql`
 6. `npm run deploy` (wypisze adres aplikacji `https://treningi.<twoja-subdomena>.workers.dev`).
-7. `npx wrangler secret put APP_PASSWORD` i wpisz hasło do aplikacji.
+7. `npx wrangler secret put APP_PASSWORD` i wpisz kod zaproszenia. Kto go zna, może założyć konto w aplikacji.
+
+Każdy użytkownik ma własne konto (login i hasło) i widzi tylko swoje dane.
 
 ## Aktualizacja po zmianach w index.html
 
