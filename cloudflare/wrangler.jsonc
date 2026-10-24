@@ -5,8 +5,7 @@
   // public/ wypełnia skrypt copy-assets.js (pliki aplikacji z katalogu głównego repozytorium)
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "d1_databases": [
-    // database_id wpisz po utworzeniu bazy: npx wrangler d1 create treningi
-    { "binding": "DB", "database_name": "treningi", "database_id": "WSTAW-ID-BAZY" }
+    { "binding": "DB", "database_name": "treningi", "database_id": "5d4d585c-bee9-4b65-87d5-ef256bb0124f" }
   ],
   "vars": { "APP_USER": "default" },
   "triggers": { "crons": ["0 3 * * *"] }
