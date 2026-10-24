@@ -363,17 +363,20 @@ function viewTimer(){
   if(it.on)return h+'<div id="itv" style="text-align:center"></div><button class="big" data-act="itx">Zatrzymaj</button></div>';
   return h+'<div class="chips">'+[["Tabata","20,10,8"],["30 / 30","30,30,10"],["50 / 10","50,10,10"]].map(function(p){return'<button class="chip" data-act="itp" data-p="'+p[1]+'">'+p[0]+'</button>'}).join("")+'</div><div class="row"><div><label for="iw">Praca (s)</label><input id="iw" type="number" inputmode="numeric" value="'+it.w+'"></div><div><label for="ir">Przerwa (s)</label><input id="ir" type="number" inputmode="numeric" value="'+it.r+'"></div><div><label for="in">Rundy</label><input id="in" type="number" inputmode="numeric" value="'+it.n+'"></div></div><button class="big" data-act="its">Start</button><p class="muted" style="font-size:13px">Sygnał dźwiękowy i wibracja na każdej zmianie. Zostaw ekran włączony i kartę otwartą.</p></div>'+calc();
 }
-// logowanie do serwera w chmurze (Cloudflare); serwer z Dockera go nie wymaga
-function lgBox(){return auth?'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">Zaloguj się, żeby dane zapisywały się na serwerze i były takie same na każdym urządzeniu.</p><label for="lpw">Hasło</label><input id="lpw" type="password" autocomplete="current-password"><button class="big" data-act="lgi">Zaloguj</button></div>':''}
+// konta na serwerze w chmurze (Cloudflare); serwer z Dockera ich nie wymaga
+function lgBox(){if(!auth)return'';var r=lgm;
+  return'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">'+(r?'Załóż konto, żeby twoje dane zapisywały się na serwerze. Kod zaproszenia dostaniesz od właściciela aplikacji.':'Zaloguj się, żeby dane zapisywały się na serwerze i były takie same na każdym urządzeniu.')+'</p><label for="lus">Login</label><input id="lus" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><label for="lpw" style="margin-top:12px">Hasło'+(r?' (min. 8 znaków)':'')+'</label><input id="lpw" type="password" autocomplete="'+(r?'new-password':'current-password')+'">'+(r?'<label for="lcd" style="margin-top:12px">Kod zaproszenia</label><input id="lcd" autocomplete="off" autocapitalize="none">':'')+'<button class="big" data-act="lgi">'+(r?'Załóż konto':'Zaloguj')+'</button><button class="ghost" style="justify-content:center" data-act="lgm">'+(r?'Mam już konto':'Nie masz konta? Załóż je')+'</button></div>'}
+// usuwa dane z tego urządzenia (po wylogowaniu albo gdy loguje się inna osoba) i wczytuje aplikację od nowa
+function wipe(){try{["gt1","gt_tpl","gt_wk","gt_cg","gt_rt","gt_rs","gt_ts","gt_act","gt_owner"].forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.reload()}
 function backup(){
-  return'<h2>Konto, kopia i import</h2>'+lgBox()+'<div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p><p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>'+impBox();
+  return'<h2>Konto, kopia i import</h2>'+lgBox()+'<div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p>'+(acct&&me?'<p class="muted">Zalogowano jako <b>'+esc(me)+'</b> <button class="sm" data-act="lgo">Wyloguj</button></p>':'')+'<p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>'+impBox();
 }
 function demoBox(){
   if(sets.some(function(s){return s.demo}))return'<div class="card" style="margin-bottom:12px"><div class="muted" style="margin-bottom:10px">Widzisz przykładowe dane, żeby sprawdzić wykresy. Możesz je usunąć, nie ruszając własnych serii.</div><button class="ghost" style="justify-content:center" data-act="undemo">Usuń przykładowe dane</button></div>';
   if(!sets.length)return'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">Wykresy pojawią się po zapisaniu serii w zakładce Trening. Jeden trening to jeden punkt, a linia rysuje się od drugiego treningu.</p><p class="muted">Chcesz zobaczyć, jak to wygląda? Wczytaj dane przykładowe, które usuniesz jednym przyciskiem.</p><button class="big" data-act="demo">Wczytaj dane przykładowe</button></div>';
   return"";
 }
-var cloud=null,auth=false,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=null,iu="auto",idf="dmy",inm="pl",cf=null;
+var cloud=null,auth=false,me="",acct=false,lgm=0,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=null,iu="auto",idf="dmy",inm="pl",cf=null;
 function badge(t){var e=document.getElementById("svb");if(!e)return;var p=/zapisywanie|łączenie|konflikt|sprawdzam/i.test(t),k=!p&&/zapisane|wczytano|zsynchronizowane|włączona/i.test(t);e.className=p?"p":k?"k":"w";e.textContent=p?"Zapisywanie…":k?"Zapisano w chmurze":"Tylko w telefonie"}
 function setCst(t){cst=t;badge(t);var e=document.getElementById("cs");if(e)e.innerHTML="<b>"+esc(t)+"</b>"}
 function months(){var by={};sets.forEach(function(s){var k=s.d.slice(0,7);(by[k]=by[k]||[]).push(s)});return by}
@@ -386,7 +389,7 @@ function push(){pushT=null;
   Object.keys(by).forEach(function(k){var j=JSON.stringify(by[k]);if(lastJ[k]!==j){lastJ[k]=j;jobs.push(cloud.doc("s"+k).set({a:by[k]}))}});
   Object.keys(lastJ).forEach(function(k){if(!by[k]){delete lastJ[k];jobs.push(cloud.doc("s"+k).set({a:[]}))}});
   jobs.push(cloud.doc("meta").set({ts:ts,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs,months:Object.keys(by)}));
-  Promise.all(jobs).then(function(){setCst("Synchronizacja z kontem włączona, dane zapisane")},function(){setCst("Nie udało się zapisać na koncie, dane są w tej przeglądarce")});
+  var P=Promise.all(jobs);P.then(function(){setCst("Synchronizacja z kontem włączona, dane zapisane")},function(){setCst("Nie udało się zapisać na koncie, dane są w tej przeglądarce")});return P;
 }
 function mark(){var by=months();Object.keys(by).forEach(function(k){lastJ[k]=JSON.stringify(by[k])})}
 // serwer z bazą PostgreSQL (docker-compose): ten sam interfejs co claude.use("db")/("user")
@@ -395,7 +398,7 @@ function apiDb(){
   function doc(id){var u="api/docs/"+encodeURIComponent(id);return{
     get:function(){return fetch(u,{cache:"no-store"}).then(function(r){if(r.status===404)return{exists:false,data:function(){return null}};return chk(r).json().then(function(j){return{exists:true,data:function(){return j}}})})},
     set:function(d){var b=JSON.stringify(d);return fetch(u,{method:"PUT",headers:{"Content-Type":"application/json"},body:b,keepalive:b.length<60000}).then(chk)}}}
-  return fetch("api/health",{cache:"no-store"}).then(function(r){if(r.status===401)auth=true;return chk(r)}).then(function(r){return r.json()}).then(function(h){
+  return fetch("api/health",{cache:"no-store"}).then(function(r){if(r.status===401)auth=true;return chk(r)}).then(function(r){return r.json()}).then(function(h){acct=!!h.acct;
     return[{collection:function(){return{doc:doc}}},{id:function(){return Promise.resolve(h.user)}}]});
 }
 function initCloud(){
@@ -404,6 +407,8 @@ function initCloud(){
     if(!r[0]||!r[1]){setCst(auth?"Zaloguj się, aby synchronizować dane":"Dane są tylko w tej przeglądarce (konto niedostępne)");if(auth)render();return}
     return r[1].id().then(function(id){
       if(!id){setCst("Zaloguj się, aby synchronizować dane z kontem");return}
+      var ow=ld("gt_owner","");if(ow&&ow!==id){wipe();return}
+      try{localStorage.setItem("gt_owner",JSON.stringify(id))}catch(e){}me=id;
       cloud=r[0].collection("data/users/"+id);
       return cloud.doc("meta").get().then(function(m){
         var lts=+ld("gt_ts",0),d=m.exists?m.data():null;
@@ -781,7 +786,11 @@ else if(a==="ipv"){ip=parseCsv(ib,iu,idf);render()}
   else if(a==="wipe"){if(cf!=="wipe"){cf="wipe";render();return}cf=null;sets=[];wk=[];save();sv("gt_wk",wk);toast("Usunięto wszystkie serie i historię");render()}
   
 else if(a==="svi"){if(auth){tab="hist";render();var lp=document.getElementById("lpw");if(lp){lp.scrollIntoView({block:"center"});lp.focus()}}else toast(cst)}
-  else if(a==="lgi"){var pw=document.getElementById("lpw").value;fetch("api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})}).then(function(r){if(!r.ok)throw r.status;auth=false;toast("Zalogowano");render();initCloud()}).catch(function(c){toast(c===401?"Nieprawidłowe hasło":"Brak połączenia z serwerem")})}
+  else if(a==="lgm"){lgm=lgm?0:1;render()}
+  else if(a==="lgi"){var lc=document.getElementById("lcd"),bd={user:document.getElementById("lus").value,password:document.getElementById("lpw").value};if(lc)bd.code=lc.value;
+    fetch(lc?"api/register":"api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bd)}).then(function(r){if(!r.ok)throw r.status;auth=false;lgm=0;toast(lc?"Konto założone":"Zalogowano");render();initCloud()})
+    .catch(function(c){toast({400:"Login: 3–32 znaki (małe litery, cyfry, - _), hasło: min. 8 znaków",401:"Nieprawidłowy login lub hasło",403:"Nieprawidłowy kod zaproszenia",409:"Ten login jest już zajęty"}[c]||"Brak połączenia z serwerem")})}
+  else if(a==="lgo"){Promise.resolve(pushT?(clearTimeout(pushT),push()):null).then(function(){return fetch("api/logout",{method:"POST"})}).then(wipe,function(){toast("Nie udało się zapisać danych, nie wylogowano. Spróbuj ponownie.")})}
   else if(a==="dis"){var n3=sets.filter(function(s){return s.id>=act.start}).length;if(n3&&cf!=="dis"){cf="dis";render();return}cf=null;sets=sets.filter(function(s){return s.id<act.start});save();act=null;sv("gt_act",null);rest=0;dr={};hx=null;if(cloud){clearTimeout(pushT);push()}toast(n3?"Trening odrzucony, usunięto "+n3+" serii":"Trening anulowany");render()}
   else if(a==="usg"){var ex5=act.ex[+b.dataset.i],sg5=sugg(ex5);if(sg5&&dr[ex5]&&dr[ex5][0]){dr[ex5][0].kg=String(sg5.kg);dr[ex5][0].reps=String(sg5.reps)}render()}
   else if(a==="mv"){mv=b.dataset.m;render()}

@@ -22,3 +22,17 @@ FOR EACH ROW WHEN OLD.data IS NOT NEW.data
 BEGIN
   INSERT INTO docs_history (user_id, doc_id, data) VALUES (OLD.user_id, OLD.doc_id, OLD.data);
 END;
+
+-- konta użytkowników: hasła jako skrót PBKDF2-SHA256 z losową solą
+CREATE TABLE IF NOT EXISTS users (
+  name       TEXT PRIMARY KEY,
+  salt       TEXT NOT NULL,
+  hash       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ustawienia serwera (np. losowy klucz do podpisywania sesji)
+CREATE TABLE IF NOT EXISTS settings (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL
+);
