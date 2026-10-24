@@ -371,17 +371,24 @@ function viewTimer(){
 // konta na serwerze w chmurze (Cloudflare); serwer z Dockera ich nie wymaga
 function lgBox(){if(!auth)return'';var r=lgm;
   return'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">'+(r?'Załóż konto, żeby twoje dane zapisywały się na serwerze. Kod zaproszenia dostaniesz od właściciela aplikacji.':'Zaloguj się, żeby dane zapisywały się na serwerze i były takie same na każdym urządzeniu.')+'</p><label for="lus">Login</label><input id="lus" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><label for="lpw" style="margin-top:12px">Hasło'+(r?' (min. 8 znaków)':'')+'</label><input id="lpw" type="password" autocomplete="'+(r?'new-password':'current-password')+'">'+(r?'<label for="lcd" style="margin-top:12px">Kod zaproszenia</label><input id="lcd" autocomplete="off" autocapitalize="none">':'')+'<button class="big" data-act="lgi">'+(r?'Załóż konto':'Zaloguj')+'</button><button class="ghost" style="justify-content:center" data-act="lgm">'+(r?'Mam już konto':'Nie masz konta? Załóż je')+'</button></div>'}
+// Strava: serwer pobiera aktywności, aplikacja je tylko wyświetla (Historia, kalendarz)
+function stSync(force){fetch("api/strava/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({force:force})}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;stc=j.connected;if(j.more)return stSync(true);if(j.error==="rate")toast("Strava: limit zapytań, spróbuję później");return stLoad()}).catch(function(){})}
+function stLoad(){return fetch("api/strava/activities",{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;stc=j.connected;var ch=JSON.stringify(j.a)!==JSON.stringify(cardio);cardio=j.a;try{localStorage.setItem("gt_cardio",JSON.stringify(cardio))}catch(e){}if((ch&&tab==="hist")||(tab==="tmr"&&tls==="acc"))render()})}
+function stBox(){if(!stf)return'';return'<h2>Strava</h2><div class="card">'+(stc?'<p style="margin-top:0">Konto Strava jest połączone. Nowe aktywności pobierają się same przy otwarciu aplikacji i pokazują się w Historii.</p><p class="muted">Pobrane aktywności: <b>'+cardio.length+'</b></p><button class="big" data-act="sts">Synchronizuj teraz</button><button class="ghost" style="justify-content:center;color:var(--pr)" data-act="std">'+(cf==="std"?"Na pewno? Usunę pobrane aktywności. Dotknij ponownie":"Rozłącz Stravę")+'</button>':'<p style="margin-top:0">Połącz konto Strava, a twoje aktywności (np. jazdy na rowerze) będą same pojawiać się w Historii obok treningów siłowych.</p><button class="big" data-act="stc">Połącz ze Stravą</button>')+'</div>'}
+var STT={Ride:"Rower",VirtualRide:"Rower wirtualny",EBikeRide:"Rower elektryczny",MountainBikeRide:"Rower MTB",GravelRide:"Rower gravel",Run:"Bieg",VirtualRun:"Bieg wirtualny",TrailRun:"Bieg terenowy",Walk:"Spacer",Hike:"Wędrówka",Swim:"Pływanie",WeightTraining:"Siłownia",Workout:"Trening",Yoga:"Joga",Rowing:"Wioślarstwo",Elliptical:"Orbitrek"};
+function stCard(c){var m=Math.round(c.sec/60),t=m>=60?Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")+" min":m+" min",x=[t];if(c.km)x.push(String(c.km).replace(".",",")+" km");if(c.up)x.push(c.up+" m w górę");if(c.hr)x.push("śr. "+c.hr+" bpm");if(c.w)x.push("śr. "+c.w+" W");
+  return'<div class="card" style="margin-bottom:10px"><div class="dh"><b>'+fmtD(c.start.slice(0,10))+'</b><span>'+esc(STT[c.type]||c.type)+(c.tr?" · trenażer":"")+'</span></div><div class="exname" style="margin-top:0">'+esc(c.name)+'</div><div class="muted">'+x.join(" · ")+'</div><div class="muted" style="font-size:12px;margin-top:6px">ze Stravy</div></div>'}
 // usuwa dane z tego urządzenia (po wylogowaniu albo gdy loguje się inna osoba) i wczytuje aplikację od nowa
-function wipe(){try{["gt1","gt_tpl","gt_wk","gt_cg","gt_rt","gt_rs","gt_ts","gt_act","gt_owner"].forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.reload()}
+function wipe(){try{["gt1","gt_tpl","gt_wk","gt_cg","gt_rt","gt_rs","gt_ts","gt_act","gt_owner","gt_cardio"].forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.reload()}
 function backup(){
-  return'<h2>Konto, kopia i import</h2>'+lgBox()+'<div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p>'+(acct&&me?'<p class="muted">Zalogowano jako <b>'+esc(me)+'</b> <button class="sm" data-act="lgo">Wyloguj</button></p>':'')+'<p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>';
+  return'<h2>Konto, kopia i import</h2>'+lgBox()+'<div class="card"><p id="cs" style="margin-top:0"><b>'+esc(cst)+'</b></p>'+(acct&&me?'<p class="muted">Zalogowano jako <b>'+esc(me)+'</b> <button class="sm" data-act="lgo">Wyloguj</button></p>':'')+'<p class="muted">Skopiuj dane i zachowaj je np. w notatce. Wklejenie ich poniżej zastąpi dane na tym urządzeniu.</p><textarea id="bx" rows="3" readonly>'+esc(JSON.stringify({v:1,sets:sets,tpl:tpl,wk:wk,cg:cg,rt:rt,rs:rs}))+'</textarea><button class="big" data-act="bcp">Kopiuj dane</button><label for="bi" style="margin-top:14px">Wczytaj dane z kopii</label><textarea id="bi" rows="3" placeholder="Wklej tutaj skopiowane dane"></textarea><button class="ghost" style="justify-content:center" data-act="bld">Wczytaj dane</button></div>'+stBox();
 }
 function demoBox(){
   if(sets.some(function(s){return s.demo}))return'<div class="card" style="margin-bottom:12px"><div class="muted" style="margin-bottom:10px">Widzisz przykładowe dane, żeby sprawdzić wykresy. Możesz je usunąć, nie ruszając własnych serii.</div><button class="ghost" style="justify-content:center" data-act="undemo">Usuń przykładowe dane</button></div>';
   if(!sets.length)return'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">Wykresy pojawią się po zapisaniu serii w zakładce Trening. Jeden trening to jeden punkt, a linia rysuje się od drugiego treningu.</p><p class="muted">Chcesz zobaczyć, jak to wygląda? Wczytaj dane przykładowe, które usuniesz jednym przyciskiem.</p><button class="big" data-act="demo">Wczytaj dane przykładowe</button></div>';
   return"";
 }
-var tls="",cloud=null,auth=false,me="",acct=false,lgm=0,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=null,iu="auto",idf="dmy",inm="pl",cf=null;
+var tls="",stf=false,stc=false,cardio=ld("gt_cardio",[]),cloud=null,auth=false,me="",acct=false,lgm=0,cst="Łączenie z kontem…",pushT=null,lastJ={},sd="",ib="",ip=null,iu="auto",idf="dmy",inm="pl",cf=null;
 function badge(t){var e=document.getElementById("svb");if(!e)return;var p=/zapisywanie|łączenie|konflikt|sprawdzam/i.test(t),k=!p&&/zapisane|wczytano|zsynchronizowane|włączona/i.test(t);e.className=p?"p":k?"k":"w";e.textContent=p?"Zapisywanie…":k?"Zapisano w chmurze":"Tylko w telefonie"}
 function setCst(t){cst=t;badge(t);var e=document.getElementById("cs");if(e)e.innerHTML="<b>"+esc(t)+"</b>"}
 function months(){var by={};sets.forEach(function(s){var k=s.d.slice(0,7);(by[k]=by[k]||[]).push(s)});return by}
@@ -403,7 +410,7 @@ function apiDb(){
   function doc(id){var u="api/docs/"+encodeURIComponent(id);return{
     get:function(){return fetch(u,{cache:"no-store"}).then(function(r){if(r.status===404)return{exists:false,data:function(){return null}};return chk(r).json().then(function(j){return{exists:true,data:function(){return j}}})})},
     set:function(d){var b=JSON.stringify(d);return fetch(u,{method:"PUT",headers:{"Content-Type":"application/json"},body:b,keepalive:b.length<60000}).then(chk)}}}
-  return fetch("api/health",{cache:"no-store"}).then(function(r){if(r.status===401)auth=true;return chk(r)}).then(function(r){return r.json()}).then(function(h){acct=!!h.acct;
+  return fetch("api/health",{cache:"no-store"}).then(function(r){if(r.status===401)auth=true;return chk(r)}).then(function(r){return r.json()}).then(function(h){acct=!!h.acct;stf=!!h.strava;
     return[{collection:function(){return{doc:doc}}},{id:function(){return Promise.resolve(h.user)}}]});
 }
 function initCloud(){
@@ -413,7 +420,7 @@ function initCloud(){
     return r[1].id().then(function(id){
       if(!id){setCst("Zaloguj się, aby synchronizować dane z kontem");return}
       var ow=ld("gt_owner","");if(ow&&ow!==id){wipe();return}
-      try{localStorage.setItem("gt_owner",JSON.stringify(id))}catch(e){}me=id;
+      try{localStorage.setItem("gt_owner",JSON.stringify(id))}catch(e){}me=id;if(stf)stSync(false);
       cloud=r[0].collection("data/users/"+id);
       return cloud.doc("meta").get().then(function(m){
         var lts=+ld("gt_ts",0),d=m.exists?m.data():null;
@@ -703,11 +710,13 @@ function editDay(k,arr){
   return h+'<button class="ghost" style="justify-content:center" data-act="hdone">Gotowe</button>';
 }
 function viewHist(){
-  if(!sets.length)return'<h1>Historia</h1>'+cal({})+'<div class="empty">Historia jest pusta. Twoje treningi pojawią się tu po dodaniu pierwszej serii.</div>';
+  if(!sets.length&&!cardio.length)return'<h1>Historia</h1>'+cal({})+'<div class="empty">Historia jest pusta. Twoje treningi pojawią się tu po dodaniu pierwszej serii.</div>';
   var days={},gs={};sets.forEach(function(s){(days[s.d]=days[s.d]||[]).push(s);var k=wkey(s);(gs[k]=gs[k]||{k:k,d:s.d,a:[]}).a.push(s)});
-  var gl=Object.keys(gs).map(function(k){return gs[k]}).sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:(+b.k||0)-(+a.k||0)});
-  var h='<h1>Historia</h1>'+demoDel()+cal(days)+'<h2>'+(cd?"Wybrany dzień":"Ostatnie treningi")+'</h2>';
-  gl.filter(function(x,i){return cd?x.d===cd:i<hl}).forEach(function(x){var d=x.d;
+  var cdays={};Object.keys(days).forEach(function(d){cdays[d]=1});
+  var gl=Object.keys(gs).map(function(k){return gs[k]});cardio.forEach(function(c){var d=c.start.slice(0,10);cdays[d]=1;gl.push({k:"c"+c.id,d:d,c:c,t:new Date(c.start.slice(0,19)).getTime()})});
+  gl.sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:(b.t||+b.k||0)-(a.t||+a.k||0)});
+  var h='<h1>Historia</h1>'+demoDel()+cal(cdays)+'<h2>'+(cd?"Wybrany dzień":"Ostatnie treningi")+'</h2>';
+  gl.filter(function(x,i){return cd?x.d===cd:i<hl}).forEach(function(x){var d=x.d;if(x.c){h+=stCard(x.c);return}
     h+='<div class="card" style="margin-bottom:10px"><div class="dh"><b>'+fmtD(d)+'</b><span>'+kgs(tonOf(x.a))+'</span></div>';
     if(he===x.k){h+=editDay(x.k,x.a)+'</div>';return}
     h+=wkNotes(wkOf(x.k,d));
@@ -800,6 +809,9 @@ else if(a==="ipv"){ip=parseCsv(ib,iu,idf);render()}
   else if(a==="wipe"){if(cf!=="wipe"){cf="wipe";render();return}cf=null;sets=[];wk=[];save();sv("gt_wk",wk);toast("Usunięto wszystkie serie i historię");render()}
   
 else if(a==="svi"){if(auth){tab="tmr";tls="acc";render();var lp=document.getElementById("lpw");if(lp){lp.scrollIntoView({block:"center"});lp.focus()}}else toast(cst)}
+  else if(a==="stc"){location.href="api/strava/connect"}
+  else if(a==="sts"){toast("Synchronizuję ze Stravą…");stSync(true)}
+  else if(a==="std"){if(cf!=="std"){cf="std";render();return}cf=null;fetch("api/strava/disconnect",{method:"POST"}).then(function(r){if(!r.ok)throw 0;stc=false;cardio=[];try{localStorage.removeItem("gt_cardio")}catch(e){}toast("Rozłączono Stravę");render()}).catch(function(){toast("Nie udało się rozłączyć, spróbuj ponownie")})}
   else if(a==="lgm"){lgm=lgm?0:1;render()}
   else if(a==="lgi"){var lc=document.getElementById("lcd"),bd={user:document.getElementById("lus").value,password:document.getElementById("lpw").value};if(lc)bd.code=lc.value;
     fetch(lc?"api/register":"api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bd)}).then(function(r){if(!r.ok)throw r.status;auth=false;lgm=0;toast(lc?"Konto założone":"Zalogowano");render();initCloud()})
@@ -837,6 +849,8 @@ else if(a==="tdel"){tpl=tpl.filter(function(x){return String(x.id)!==b.dataset.t
   else if(a==="rs"){var o=[60,90,120,180];rs=o[(o.indexOf(rs)+1)%4];sv("gt_rs",rs);render()}
 });
 function fitVh(){document.documentElement.style.setProperty("--vh",window.innerHeight+"px")}fitVh();window.addEventListener("resize",fitVh);window.addEventListener("orientationchange",function(){setTimeout(fitVh,300)});
+// powrót ze Stravy po połączeniu konta
+(function(){var m=/[?&]strava=(\w+)/.exec(location.search);if(!m)return;history.replaceState(null,"",location.pathname);tab="tmr";tls="acc";setTimeout(function(){toast(m[1]==="ok"?"Połączono ze Stravą, pobieram aktywności…":m[1]==="scope"?"Zaznacz w Stravie zgodę na odczyt aktywności":"Nie udało się połączyć ze Stravą")},300)})();
 render();setInterval(tick,1000);initCloud();document.addEventListener("visibilitychange",function(){if(document.hidden&&cloud&&pushT){clearTimeout(pushT);push()}});
 document.addEventListener("change",function(e){if(e.target.id!=="bf"||!e.target.files[0])return;var r=new FileReader();r.onload=function(){ib=r.result;ip=null;render();toast("Plik wczytany. Naciśnij Sprawdź dane")};r.readAsText(e.target.files[0])});
 </script>

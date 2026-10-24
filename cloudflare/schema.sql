@@ -41,3 +41,21 @@ CREATE TABLE IF NOT EXISTS settings (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL
 );
+
+-- połączenie z kontem Strava (tokeny OAuth) i pobrane aktywności
+CREATE TABLE IF NOT EXISTS strava (
+  user_id       TEXT PRIMARY KEY,
+  athlete_id    INTEGER,
+  access_token  TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  expires_at    INTEGER NOT NULL,
+  last_sync     INTEGER NOT NULL DEFAULT 0,
+  cursor        INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS activities (
+  user_id TEXT    NOT NULL,
+  id      INTEGER NOT NULL,
+  start   INTEGER NOT NULL,
+  data    TEXT    NOT NULL,
+  PRIMARY KEY (user_id, id)
+);

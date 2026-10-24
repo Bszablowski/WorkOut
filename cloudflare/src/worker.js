@@ -1,6 +1,8 @@
 // Dziennik treningów na Cloudflare: pliki aplikacji z katalogu public/, dane w bazie D1.
 // API dokumentów jest takie samo jak w server/server.js (wersja z PostgreSQL), dochodzą konta użytkowników.
 // Konto zakłada się w aplikacji, podając kod zaproszenia: sekret APP_PASSWORD.
+import { strava } from "./strava.js";
+
 const MAX_BODY = 1024 * 1024;
 const SESSION_DAYS = 365;
 const HISTORY_DAYS = 90;
@@ -105,7 +107,8 @@ async function api(req, env, p) {
   const user = await sessionUser(req, env);
   if (!user) return json(401, { error: "login required" });
 
-  if (p === "/api/health") return json(200, { ok: true, user, acct: true });
+  if (p === "/api/health") return json(200, { ok: true, user, acct: true, strava: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET) });
+  if (p.startsWith("/api/strava/")) return strava(req, env, user, p, async (msg) => hmac(await getSessionKey(env), msg));
 
   const m = /^\/api\/docs\/([A-Za-z0-9_-]{1,64})$/.exec(p);
   if (!m) return json(404, { error: "not found" });
