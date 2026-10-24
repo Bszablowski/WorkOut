@@ -7,6 +7,7 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "treningi", "database_id": "5d4d585c-bee9-4b65-87d5-ef256bb0124f" }
   ],
-  "vars": { "APP_USER": "default" },
+  // STRAVA_CLIENT_ID z strava.com/settings/api; STRAVA_CLIENT_SECRET ustawia się sekretem
+  "vars": { "APP_USER": "default", "STRAVA_CLIENT_ID": "290605" },
   "triggers": { "crons": ["0 3 * * *"] }
 }
