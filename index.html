@@ -191,10 +191,10 @@ function finBtn(){var n=act?sets.filter(function(s){return s.id>=act.start}).len
 function tick(){var el=document.getElementById("el");if(el&&act){var s=Math.floor((Date.now()-act.start)/1000);el.textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}drawRest();drawInt()}
 function drawRest(){var r=document.getElementById("rest");if(!r)return;var left=Math.round((rest-Date.now())/1000);if(left<=0){if(rest){rest=0;toast("Koniec przerwy, czas na kolejną serię");try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}r.className="";r.innerHTML="";return}r.className="rest";r.innerHTML='<span>Przerwa</span><b class="num">'+Math.floor(left/60)+":"+String(left%60).padStart(2,"0")+'</b><button data-act="r30">+30 s</button><button data-act="r0">Pomiń</button>'}
 function viewStart(){
-  var tot=tonOf(sets),days={};sets.forEach(function(s){days[s.d]=1});
-  var mo=Object.keys(days).filter(function(d){return d.indexOf(ymd().slice(0,7))===0}).length;
+  var tot=tonOf(sets),tdays=tDays(),days=Object.keys(tdays),m0=ymd().slice(0,7),mo=days.filter(function(d){return d.indexOf(m0)===0});
+  var nb=function(a){return a.filter(function(d){return tdays[d].km>0||tdays[d].b}).length},ng=function(a){return a.filter(function(d){return tdays[d].g}).length};
   var h='<h1>Trening</h1>'+demoDel()+'<div class="hero"><span>Przerzucony tonaż łącznie</span><b class="num">'+kgs(tot)+'</b><span>'+(tot>=1500?"to około "+Math.floor(tot/1500)+" aut osobowych":"Każda seria się liczy")+'</span></div>'+
-  '<div class="stats"><div class="stat"><span>Dni treningowe</span><b class="num">'+Object.keys(days).length+'</b></div><div class="stat"><span>W tym miesiącu</span><b class="num">'+mo+'</b></div></div>'+
+  '<div class="stats"><div class="stat"><span>Dni treningowe</span><b class="num">'+days.length+'</b><span>siłownia '+ng(days)+', rower '+nb(days)+'</span></div><div class="stat"><span>W tym miesiącu</span><b class="num">'+mo.length+'</b><span>siłownia '+ng(mo)+', rower '+nb(mo)+'</span></div></div>'+
   '<button class="big" data-act="start">Zacznij pusty trening</button><h2>Z szablonu</h2>';
   if(!tpl.length)return h+'<div class="empty">Nie masz jeszcze szablonów. Stwórz pierwszy w zakładce Plany.</div>';
   return h+tpl.map(function(t){return'<button class="ghost" data-act="start" data-t="'+t.id+'">'+esc(t.name)+'<small class="muted">'+t.ex.length+' ćw.</small></button>'}).join("");
@@ -218,13 +218,16 @@ function viewPlans(){
   if(!tpl.length)return h+'<div class="empty">Brak szablonów. Dodaj ćwiczenia powyżej i zapisz pierwszy.</div>';
   return h+tpl.map(function(t,i){return'<div class="card" style="margin-bottom:10px"><div class="exname" style="display:flex;align-items:center;gap:6px"><span style="flex:1;min-width:0">'+esc(t.name)+'</span><button class="sm" aria-label="Przesuń wyżej" data-act="tmu" data-t="'+t.id+'"'+(i?'':' disabled')+'>↑</button><button class="sm" aria-label="Przesuń niżej" data-act="tmd" data-t="'+t.id+'"'+(i<tpl.length-1?'':' disabled')+'>↓</button></div><div class="muted">'+t.ex.map(function(x){return esc(x.n)+" "+x.s+"×"+esc(x.r)}).join(", ")+'</div><div class="row" style="flex-wrap:wrap"><button class="sm" data-act="start" data-t="'+t.id+'">Zacznij trening</button><button class="sm" data-act="ted" data-t="'+t.id+'">Edytuj</button><button class="sm" data-act="tdup" data-t="'+t.id+'">Duplikuj</button><button class="sm" data-act="tdel" data-t="'+t.id+'">Usuń</button></div></div>'}).join("");
 }
+// rower: im więcej km, tym mocniejszy odcień; dzień z siłownią i rowerem przecięty po przekątnej
+function calBike(o){var p=Math.round(35+Math.min(o.km/80,1)*65),c="color-mix(in srgb,var(--vio) "+p+"%,var(--card))";
+  return' style="background:'+(o.g?"linear-gradient(135deg,var(--acc) 50%,"+c+" 50%)":c)+';color:'+(p>60||o.g?"#fff":"var(--ink)")+'" title="'+r1(o.km)+' km"'}
 function cal(days){
   var y=cm.getFullYear(),m=cm.getMonth(),n=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7,today=ymd(),cnt=0;
   var h='<div class="card"><div class="mh"><button class="sm" aria-label="Poprzedni miesiąc" data-act="mo" data-n="-1">‹</button><b class="num" style="font-size:22px;text-transform:capitalize">'+cm.toLocaleDateString("pl-PL",{month:"long",year:"numeric"})+'</b><button class="sm" aria-label="Następny miesiąc" data-act="mo" data-n="1">›</button></div><div class="cal">';
   ["Pn","Wt","Śr","Cz","Pt","So","Nd"].forEach(function(x){h+='<b>'+x+'</b>'});
   for(var i=0;i<off;i++)h+='<span></span>';
-  for(var d=1;d<=n;d++){var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");if(days[k])cnt++;h+='<button class="'+(days[k]?"tr":"")+(k===today?" td":"")+(k===cd?" sel":"")+'" data-act="day" data-d="'+k+'"'+(days[k]?"":" disabled")+'>'+d+'</button>'}
-  return h+'</div><div class="muted" style="font-size:13px;margin-top:10px;display:flex;align-items:center;gap:8px"><i class="lg"></i>dzień z treningiem<span style="margin-left:auto">w tym miesiącu: <b>'+cnt+'</b></span></div></div>'+(cd?'<button class="sm" style="margin-top:10px" data-act="day" data-d="">Pokaż wszystkie dni</button>':'');
+  for(var d=1;d<=n;d++){var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");var o=days[k];if(o)cnt++;h+='<button class="'+(o&&o.g&&!o.b?"tr":"")+(k===today?" td":"")+(k===cd?" sel":"")+'"'+(o&&o.b?calBike(o):'')+' data-act="day" data-d="'+k+'"'+(o?"":" disabled")+'>'+d+'</button>'}
+  return h+'</div><div class="muted" style="font-size:13px;margin-top:10px;display:flex;align-items:center;gap:8px"><i class="lg"></i>siłownia <i class="lg" style="background:var(--vio);box-shadow:none"></i>rower<span style="margin-left:auto">w tym miesiącu: <b>'+cnt+'</b></span></div></div>'+(cd?'<button class="sm" style="margin-top:10px" data-act="day" data-d="">Pokaż wszystkie dni</button>':'');
 }
 function toTop(){var m=document.getElementById("app");if(m)m.scrollTop=0;try{window.scrollTo(0,0)}catch(e){}}
 function toast(m){var t=document.getElementById("toast");t.textContent=m;t.classList.add("on");clearTimeout(tt);tt=setTimeout(function(){t.classList.remove("on")},2400)}
@@ -373,8 +376,11 @@ function lgBox(){if(!auth)return'';var r=lgm;
   return'<div class="card" style="margin-bottom:12px"><p style="margin-top:0">'+(r?'Załóż konto, żeby twoje dane zapisywały się na serwerze. Kod zaproszenia dostaniesz od właściciela aplikacji.':'Zaloguj się, żeby dane zapisywały się na serwerze i były takie same na każdym urządzeniu.')+'</p><label for="lus">Login</label><input id="lus" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><label for="lpw" style="margin-top:12px">Hasło'+(r?' (min. 8 znaków)':'')+'</label><input id="lpw" type="password" autocomplete="'+(r?'new-password':'current-password')+'">'+(r?'<label for="lcd" style="margin-top:12px">Kod zaproszenia</label><input id="lcd" autocomplete="off" autocapitalize="none">':'')+'<button class="big" data-act="lgi">'+(r?'Załóż konto':'Zaloguj')+'</button><button class="ghost" style="justify-content:center" data-act="lgm">'+(r?'Mam już konto':'Nie masz konta? Załóż je')+'</button></div>'}
 // Strava: serwer pobiera aktywności, aplikacja je tylko wyświetla (Historia, kalendarz)
 function stSync(force){fetch("api/strava/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({force:force})}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;stc=j.connected;if(j.more)return stSync(true);if(j.error==="rate")toast("Strava: limit zapytań, spróbuję później");return stLoad()}).catch(function(){})}
-function stLoad(){return fetch("api/strava/activities",{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;stc=j.connected;var ch=JSON.stringify(j.a)!==JSON.stringify(cardio);cardio=j.a;try{localStorage.setItem("gt_cardio",JSON.stringify(cardio))}catch(e){}if((ch&&tab==="hist")||(tab==="tmr"&&tls==="acc"))render()})}
+function stLoad(){return fetch("api/strava/activities",{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;stc=j.connected;var ch=JSON.stringify(j.a)!==JSON.stringify(cardio);cardio=j.a;try{localStorage.setItem("gt_cardio",JSON.stringify(cardio))}catch(e){}if((ch&&(tab==="hist"||tab==="prog"||(tab==="log"&&!act&&!sm)))||(tab==="tmr"&&tls==="acc"))render()})}
 function stBox(){if(!stf)return'';return'<h2>Strava</h2><div class="card">'+(stc?'<p style="margin-top:0">Konto Strava jest połączone. Nowe aktywności pobierają się same przy otwarciu aplikacji i pokazują się w Historii.</p><p class="muted">Pobrane aktywności: <b>'+cardio.length+'</b></p><button class="big" data-act="sts">Synchronizuj teraz</button><button class="ghost" style="justify-content:center;color:var(--pr)" data-act="std">'+(cf==="std"?"Na pewno? Usunę pobrane aktywności. Dotknij ponownie":"Rozłącz Stravę")+'</button>':'<p style="margin-top:0">Połącz konto Strava, a twoje aktywności (np. jazdy na rowerze) będą same pojawiać się w Historii obok treningów siłowych.</p><button class="big" data-act="stc">Połącz ze Stravą</button>')+'</div>'}
+function isBike(c){return/Ride/.test(c.type)}
+// dni treningowe: g = siłownia (serie z dziennika albo siłownia ze Stravy), b = rower, km = suma km na rowerze
+function tDays(){var m={};sets.forEach(function(x){(m[x.d]=m[x.d]||{g:0,b:0,km:0}).g=1});cardio.forEach(function(c){var d=c.start.slice(0,10),o=m[d]=m[d]||{g:0,b:0,km:0};if(isBike(c)){o.b=1;o.km+=c.km||0}else o.g=1});return m}
 var STT={Ride:"Rower",VirtualRide:"Rower wirtualny",EBikeRide:"Rower elektryczny",MountainBikeRide:"Rower MTB",GravelRide:"Rower gravel",Run:"Bieg",VirtualRun:"Bieg wirtualny",TrailRun:"Bieg terenowy",Walk:"Spacer",Hike:"Wędrówka",Swim:"Pływanie",WeightTraining:"Siłownia",Workout:"Trening",Yoga:"Joga",Rowing:"Wioślarstwo",Elliptical:"Orbitrek"};
 function stCard(c){var m=Math.round(c.sec/60),t=m>=60?Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")+" min":m+" min",x=[t];if(c.km)x.push(String(c.km).replace(".",",")+" km");if(c.up)x.push(c.up+" m w górę");if(c.hr)x.push("śr. "+c.hr+" bpm");if(c.w)x.push("śr. "+c.w+" W");
   return'<div class="card" style="margin-bottom:10px"><div class="dh"><b>'+fmtD(c.start.slice(0,10))+'</b><span>'+esc(STT[c.type]||c.type)+(c.tr?" · trenażer":"")+'</span></div><div class="exname" style="margin-top:0">'+esc(c.name)+'</div><div class="muted">'+x.join(" · ")+'</div><div class="muted" style="font-size:12px;margin-top:6px">ze Stravy</div></div>'}
@@ -673,7 +679,7 @@ function priRank(e){var i=PRI.indexOf(String(e).toLowerCase());return i<0?99:i%3
 function exSorted(){var l=exList(),o=l.map(function(e,i){return[e,i]});o.sort(function(a,b){return priRank(a[0])-priRank(b[0])||a[1]-b[1]});return o.map(function(x){return x[0]})}
 function viewProg(){
   var ex=exSorted();
-  if(!ex.length)return'<h1>Postępy</h1>'+demoBox();
+  if(!ex.length)return'<h1>Postępy</h1>'+demoBox()+bikeBox();
   sel=sel.filter(function(x){return x==="*"||ex.indexOf(x)>=0});if(!sel.length)sel=[ex[0]];
   pe=sel.filter(function(x){return x!=="*"})[0]||ex[0];
   var h='<h1>Postępy</h1>'+demoBox()+'<div class="chips"><button class="chip" data-act="pick" data-ex="*" aria-pressed="'+(sel.indexOf("*")>=0)+'">Suma</button>'+ex.map(function(e){return'<button class="chip" data-act="pick" data-ex="'+esc(e)+'" aria-pressed="'+(sel.indexOf(e)>=0)+'">'+esc(e)+'</button>'}).join("")+'</div>'+pctl()+mchart()+'<p class="muted" style="font-size:13px">Zaznacz do 4 ćwiczeń, żeby je porównać. 1RM liczone wzorem Epleya z uwzględnieniem RIR, rozgrzewki pomijane.</p>';
@@ -682,7 +688,23 @@ function viewProg(){
     var first=ss[0],last=ss[ss.length-1],diff=r1(last.rm-first.rm),mx=Math.max.apply(0,ss.map(function(s){return s.kg})),rec=Math.max.apply(0,ss.map(function(s){return s.rm}));
     h+='<h2>'+esc(pe)+'</h2><div class="stats"><div class="stat"><span>Rekord ciężaru</span><b class="num">'+mx+' kg</b></div><div class="stat"><span>Rekord 1RM</span><b class="num">'+r1(rec)+' kg</b></div><div class="stat"><span>Treningi</span><b class="num">'+ss.length+'</b></div><div class="stat"><span>Zmiana 1RM od początku</span><b class="num '+(diff>0?"up":"")+'">'+(diff>0?"+":"")+diff+' kg</b></div><div class="stat"><span>Tonaż tego ćwiczenia</span><b class="num">'+kgs(tonOf(sets.filter(function(s){return s.ex===pe})))+'</b></div><div class="stat"><span>Tonaż łącznie</span><b class="num">'+kgs(tonOf(sets))+'</b></div></div>';
   }
-  return h+bwBox()+weekly()+records()+muscles()+musclesSR();
+  return h+bikeBox()+bwBox()+weekly()+records()+muscles()+musclesSR();
+}
+// rower ze Stravy: średnia moc albo prędkość w czasie; kropki to jazdy, linia to średnia z 5 ostatnich jazd
+var bm="w",br=365;
+function bikeBox(){
+  var lim=br?ymd(new Date(Date.now()-br*864e5)):"";
+  var all=cardio.filter(isBike),pts=all.filter(function(c){return c.start.slice(0,10)>=lim}).map(function(c){return{d:c.start.slice(0,10),v:bm==="w"?c.w:(c.km&&c.sec?Math.round(c.km/(c.sec/3600)*10)/10:null)}}).filter(function(x){return x.v>0});
+  if(!all.length)return'';
+  var u=bm==="w"?" W":" km/h",h='<h2>Rower: '+(bm==="w"?"średnia moc":"średnia prędkość")+'</h2><div class="chips">'+[["w","Moc"],["v","Prędkość"]].map(function(m){return'<button class="chip" data-act="bm" data-m="'+m[0]+'" aria-pressed="'+(bm===m[0])+'">'+m[1]+'</button>'}).join("")+'</div><div class="chips">'+[[90,"3 mies."],[180,"6 mies."],[365,"Rok"],[0,"Wszystko"]].map(function(m){return'<button class="chip" data-act="br" data-r="'+m[0]+'" aria-pressed="'+(br===m[0])+'">'+m[1]+'</button>'}).join("")+'</div>';
+  if(pts.length<2)return h+'<div class="empty">Za mało jazd z '+(bm==="w"?"pomiarem mocy":"dystansem")+' w tym okresie.</div>';
+  var vs=pts.map(function(x){return x.v}),avg=r1(vs.reduce(function(a,b){return a+b},0)/vs.length),n5=pts.slice(-5),a5=r1(n5.reduce(function(a,x){return a+x.v},0)/n5.length);
+  h+='<div class="stats"><div class="stat"><span>Średnio w okresie</span><b class="num">'+avg+u+'</b></div><div class="stat"><span>Ostatnie 5 jazd</span><b class="num">'+a5+u+'</b></div></div>';
+  var W=320,H=160,P=40,lo=Math.min.apply(0,vs),hi=Math.max.apply(0,vs);if(hi===lo){hi+=1;lo-=1}
+  var t0=Date.parse(pts[0].d),t1=Date.parse(pts[pts.length-1].d)||t0+1,X=function(d){return P+(t1>t0?(Date.parse(d)-t0)/(t1-t0):0.5)*(W-P-10)},Y=function(v){return H-22-(v-lo)/(hi-lo)*(H-44)};
+  var dots=pts.map(function(x){return'<circle cx="'+X(x.d).toFixed(1)+'" cy="'+Y(x.v).toFixed(1)+'" r="2.5" fill="var(--vio)" opacity=".45"/>'}).join("");
+  var ma=pts.map(function(x,i){var w=pts.slice(Math.max(0,i-4),i+1);return X(x.d).toFixed(1)+","+Y(w.reduce(function(a,y){return a+y.v},0)/w.length).toFixed(1)}).join(" ");
+  return h+'<div class="card"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Wykres roweru"><line x1="'+P+'" x2="'+(W-10)+'" y1="'+(H-22)+'" y2="'+(H-22)+'" stroke="var(--line)"/><text x="0" y="16" font-size="11" fill="var(--mut)">'+r1(hi)+'</text><text x="0" y="'+(H-24)+'" font-size="11" fill="var(--mut)">'+r1(lo)+'</text>'+dots+'<polyline points="'+ma+'" fill="none" stroke="var(--vio)" stroke-width="2.5" stroke-linejoin="round"/><text x="'+P+'" y="'+(H-6)+'" font-size="11" fill="var(--mut)">'+fmtD(pts[0].d)+'</text><text x="'+(W-10)+'" y="'+(H-6)+'" font-size="11" text-anchor="end" fill="var(--mut)">'+fmtD(pts[pts.length-1].d)+'</text></svg><div class="muted" style="font-size:13px">Kropki to pojedyncze jazdy ('+pts.length+'), linia to średnia z 5 ostatnich jazd.</div></div>';
 }
 function bwBox(){
   var m={};wk.forEach(function(w){if(w.bw)m[w.d]=w.bw});
@@ -712,8 +734,8 @@ function editDay(k,arr){
 function viewHist(){
   if(!sets.length&&!cardio.length)return'<h1>Historia</h1>'+cal({})+'<div class="empty">Historia jest pusta. Twoje treningi pojawią się tu po dodaniu pierwszej serii.</div>';
   var days={},gs={};sets.forEach(function(s){(days[s.d]=days[s.d]||[]).push(s);var k=wkey(s);(gs[k]=gs[k]||{k:k,d:s.d,a:[]}).a.push(s)});
-  var cdays={};Object.keys(days).forEach(function(d){cdays[d]=1});
-  var gl=Object.keys(gs).map(function(k){return gs[k]});cardio.forEach(function(c){var d=c.start.slice(0,10);cdays[d]=1;gl.push({k:"c"+c.id,d:d,c:c,t:new Date(c.start.slice(0,19)).getTime()})});
+  var cdays=tDays();
+  var gl=Object.keys(gs).map(function(k){return gs[k]});cardio.forEach(function(c){var d=c.start.slice(0,10);gl.push({k:"c"+c.id,d:d,c:c,t:new Date(c.start.slice(0,19)).getTime()})});
   gl.sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:(b.t||+b.k||0)-(a.t||+a.k||0)});
   var h='<h1>Historia</h1>'+demoDel()+cal(cdays)+'<h2>'+(cd?"Wybrany dzień":"Ostatnie treningi")+'</h2>';
   gl.filter(function(x,i){return cd?x.d===cd:i<hl}).forEach(function(x){var d=x.d;if(x.c){h+=stCard(x.c);return}
@@ -812,6 +834,8 @@ else if(a==="svi"){if(auth){tab="tmr";tls="acc";render();var lp=document.getElem
   else if(a==="stc"){location.href="api/strava/connect"}
   else if(a==="sts"){toast("Synchronizuję ze Stravą…");stSync(true)}
   else if(a==="std"){if(cf!=="std"){cf="std";render();return}cf=null;fetch("api/strava/disconnect",{method:"POST"}).then(function(r){if(!r.ok)throw 0;stc=false;cardio=[];try{localStorage.removeItem("gt_cardio")}catch(e){}toast("Rozłączono Stravę");render()}).catch(function(){toast("Nie udało się rozłączyć, spróbuj ponownie")})}
+  else if(a==="bm"){bm=b.dataset.m;render()}
+  else if(a==="br"){br=+b.dataset.r;render()}
   else if(a==="lgm"){lgm=lgm?0:1;render()}
   else if(a==="lgi"){var lc=document.getElementById("lcd"),bd={user:document.getElementById("lus").value,password:document.getElementById("lpw").value};if(lc)bd.code=lc.value;
     fetch(lc?"api/register":"api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bd)}).then(function(r){if(!r.ok)throw r.status;auth=false;lgm=0;toast(lc?"Konto założone":"Zalogowano");render();initCloud()})
