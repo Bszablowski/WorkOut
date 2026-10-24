@@ -1,2 +1,7 @@
 .env
 node_modules/
+
+# Cloudflare
+cloudflare/public/
+cloudflare/.wrangler/
+cloudflare/.dev.vars

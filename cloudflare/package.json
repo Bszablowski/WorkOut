@@ -1,0 +1,15 @@
+{
+  "name": "treningi-cloudflare",
+  "private": true,
+  "scripts": {
+    "dev": "node copy-assets.js && wrangler dev",
+    "deploy": "node copy-assets.js && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  },
+  "allowScripts": {
+    "workerd@1.20261019.1": true,
+    "esbuild@0.28.2": true
+  }
+}
